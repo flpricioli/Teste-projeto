@@ -448,38 +448,16 @@
         }
 
         // --- 6. RENDERIZAR LISTA ---
-        function renderizarLista() {
-            const listContainer = document.getElementById('contagens-list');
-            if (contagens.length === 0) {
-                listContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Nenhuma contagem realizada ainda.</p>';
-                return;
-            }
-
-            // Inverte para mostrar as mais recentes no topo
-            const html = contagens.slice().reverse().map(c => {
-                let corDivergencia = 'divergence-zero';
-                let sinal = '';
-                if (c.divergencia > 0) { corDivergencia = 'text-success'; sinal = '+'; }
-                else if (c.divergencia < 0) { corDivergencia = 'text-danger'; }
-
-                return `
-                <div class="list-item">
-                    <div class="list-item-header">
-                        <strong>${c.sku}</strong>
-                        <span style="font-size: 12px; color: var(--text-muted);">${c.data_hora}</span>
-                    </div>
-                    <div style="margin-bottom: 5px;">${c.descricao}</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                        <span>Sis: ${c.qtd_sistema} | Fís: ${c.qtd_fisica}</span>
-                        <span class="${corDivergencia}">Div: ${sinal}${c.divergencia}</span>
-                    </div>
-                </div>
-                `;
-            }).join('');
-
-            listContainer.innerHTML = html;
+       function mostrarFeedback(msg, tipo) {
+            feedbackMsg.innerText = msg;
+            feedbackMsg.style.backgroundColor = tipo === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
+            // CORREÇÃO: Usando as cores diretamente com aspas, em vez de var() solto
+            feedbackMsg.style.color = tipo === 'success' ? '#4caf50' : '#f44336';
+            feedbackMsg.style.border = `1px solid ${tipo === 'success' ? '#4caf50' : '#f44336'}`;
+            feedbackMsg.style.display = 'block';
+            
+            setTimeout(() => { feedbackMsg.style.display = 'none'; }, 3000);
         }
-
         // --- 7. DASHBOARD E KPIs ---
         function atualizarDashboard() {
             const totalConferidos = contagens.length;
