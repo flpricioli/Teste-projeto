@@ -374,7 +374,10 @@
             }
         }
 
-        document.getElementById('btn-salvar').addEventListener('click', () => {
+        // URL oficial do seu Google Apps Script
+        const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbySpAMdfxJNdm5O-2_oM41uIEJFcgzLTs6w_aO3oAOsn_oWHKMiZ3h9hIy_hI8DUyuo/exec";
+
+        document.getElementById('btn-salvar').addEventListener('click', async () => {
             if (!produtoAtual) {
                 mostrarFeedback('Busque ou escaneie um produto válido.', 'danger');
                 return;
@@ -388,7 +391,8 @@
 
             const divergencia = qtdFisica - produtoAtual.quantidade_sistema;
 
-            contagens.push({
+            // Cria o registro com os dados
+            const registro = {
                 codigo: produtoAtual.id_ean,
                 sku: produtoAtual.id_sku,
                 descricao: produtoAtual.descricao,
@@ -397,14 +401,36 @@
                 qtd_fisica: qtdFisica,
                 divergencia: divergencia,
                 data_hora: new Date().toLocaleString('pt-BR')
-            });
+            };
+
+            // Salva na memória do app (aba "Contagens" local)
+            contagens.push(registro);
             
+            // Avisa o usuário que o envio começou
+            mostrarFeedback('Enviando para a planilha...', 'success');
+
+            // Dispara a requisição para a sua URL do Google Apps Script
+            try {
+                await fetch(URL_GOOGLE_SHEETS, {
+                    method: 'POST',
+                    mode: 'no-cors', // Fundamental para não dar erro de CORS em chamadas cross-origin
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(registro)
+                });
+                
+                mostrarFeedback('Salvo no app e na Planilha!', 'success');
+            } catch (error) {
+                console.error("Erro na integração:", error);
+                mostrarFeedback('Salvo no app, mas falhou ao enviar para a web.', 'warning');
+            }
+
+            // Limpa a tela para a próxima leitura
             inputCodigo.value = '';
             inputQtd.value = '';
             painelInfo.style.display = 'none';
             produtoAtual = null;
-
-            mostrarFeedback('Salvo com sucesso!', 'success');
         });
 
         // --- CORREÇÃO DO ERRO SYNTAX APLICADA AQUI ---
