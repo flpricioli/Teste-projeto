@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventário de Estoque</title>
+    <!-- Biblioteca ZXing para leitura de código de barras e QR Code -->
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --bg-input: #2c2c2c;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --primary: #2196f3;
+            --success: #4caf50;
+            --danger: #f44336;
+            --border: #333333;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding-bottom: 70px; /* Espaço para a navbar inferior */
+        }
+
+        h2, h3 { margin-top: 0; }
+
+        .container { padding: 15px; }
+
+        /* Abas */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Navegação Inferior */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--bg-card);
+            display: flex;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 15px 0;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--success);
+            border-bottom: 3px solid var(--success);
+            font-weight: bold;
+        }
+
+        /* Botões */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .btn-scan {
+            background-color: var(--success);
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-secondary { background-color: #555; color: white; }
+
+        /* Formulários */
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .form-group input[readonly] { color: var(--text-muted); }
+
+        /* Scanner de Vídeo */
+        #video-container {
+            display: none;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 2px solid var(--success);
+        }
+        video { width: 100%; height: auto; display: block; }
+
+        /* Cards de Informação */
+        .info-card {
+            background-color: var(--bg-card);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+        }
+        .info-card p { margin: 5px 0; font-size: 14px; }
+        .info-card strong { color: white; }
+
+        /* Listas e Tabelas */
+        .list-item {
+            background-color: var(--bg-card);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .list-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+        
+        /* Dashboard */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background-color: var(--bg-card);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .kpi-value { font-size: 24px; font-weight: bold; margin: 10px 0 5px; }
+        .kpi-label { font-size: 12px; color: var(--text-muted); }
+
+        /* Utilitários de Cor */
+        .text-success { color: var(--success) !important; }
+        .text-danger { color: var(--danger) !important; }
+        .text-warning { color: #ff9800 !important; }
+
+        #feedback-msg {
+            display: none;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ABA 1: CONFERÊNCIA (Fluxo Principal) -->
+    <div id="tab-scan" class="tab-content active container">
+        <h2>Conferência de Estoque</h2>
+        
+        <button id="btn-start-scan" class="btn btn-scan">📷 Escanear Código</button>
+        
+        <div id="video-container">
+            <video id="video"></video>
+            <button id="btn-stop-scan" class="btn btn-secondary" style="border-radius: 0; margin-bottom: 0;">Cancelar Câmera</button>
+        </div>
+
+        <div id="feedback-msg"></div>
+
+        <div class="form-group">
+            <label for="codigo-input">Código (EAN ou SKU)</label>
+            <input type="text" id="codigo-input" placeholder="Digite ou escaneie o código" autocomplete="off">
+        </div>
+
+        <div id="product-info-panel" class="info-card" style="display: none;">
+            <h3 id="info-desc" style="margin-top:0; margin-bottom: 10px; color: var(--primary);">Produto</h3>
+            <p><strong>SKU:</strong> <span id="info-sku"></span></p>
+            <p><strong>Localização:</strong> <span id="info-loc"></span></p>
+            <p><strong>Qtd. Sistema:</strong> <span id="info-qtd-sis"></span> <span id="info-unidade"></span></p>
+        </div>
+
+        <div class="form-group">
+            <label for="qtd-fisica-input">Quantidade Física Contada</label>
+            <input type="number" id="qtd-fisica-input" placeholder="0" step="0.01">
+        </div>
+
+        <button id="btn-salvar" class="btn btn-primary">💾 Salvar Contagem</button>
+    </div>
+
+    <!-- ABA 2: LISTA DE CONTAGENS -->
+    <div id="tab-list" class="tab-content container">
+        <h2>Registros da Sessão</h2>
+        <button id="btn-export" class="btn btn-primary" style="margin-bottom: 20px;">📊 Exportar CSV</button>
+        
+        <div id="contagens-list">
+            <p style="text-align: center; color: var(--text-muted);">Nenhuma contagem realizada ainda.</p>
+        </div>
+    </div>
+
+    <!-- ABA 3: DASHBOARD -->
+    <div id="tab-dash" class="tab-content container">
+        <h2>KPIs de Acuracidade</h2>
+        
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Acuracidade do Estoque</div>
+                <div id="kpi-acuracidade" class="kpi-value text-success">100%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Itens Conferidos</div>
+                <div id="kpi-total" class="kpi-value">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Itens com Divergência</div>
+                <div id="kpi-divergentes" class="kpi-value text-warning">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Valor Total em Risco (R$)</div>
+                <div id="kpi-risco" class="kpi-value text-danger">R$ 0,00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVEGAÇÃO INFERIOR -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('scan', this)">
+            <div style="font-size: 20px; margin-bottom: 4px;">🔍</div>
+            Escanear
+        </div>
+        <div class="nav-item" onclick="switchTab('list', this)">
+            <div style="font-size: 20px; margin-bottom: 4px;">📋</div>
+            Contagens
+        </div>
+        <div class="nav-item" onclick="switchTab('dash', this)">
+            <div style="font-size: 20px; margin-bottom: 4px;">📈</div>
+            Dashboard
+        </div>
+    </nav>
+
+    <script>
+        // --- 1. BANCO DE DADOS LOCAL (10 Produtos Fictícios) ---
+        const bancoProdutos = [
+            { id_sku: "SKU001", id_ean: "7891000000001", id_dun: "17891000000008", fator_conversao: 1, descricao: "Parafuso Sextavado M8", categoria: "Fixadores", unidade: "UN", valor_unitario: 0.50, localizacao: "A-01-01", quantidade_sistema: 500, consumo_medio_diario: 20 },
+            { id_sku: "SKU002", id_ean: "7891000000002", id_dun: "17891000000015", fator_conversao: 1, descricao: "Tinta Branca Acrílica 18L", categoria: "Químicos", unidade: "GL", valor_unitario: 120.00, localizacao: "B-02-05", quantidade_sistema: 50, consumo_medio_diario: 2 },
+            { id_sku: "SKU003", id_ean: "7891000000003", id_dun: "17891000000022", fator_conversao: 1, descricao: "Caixa de Papelão 50x50x50", categoria: "Embalagens", unidade: "UN", valor_unitario: 3.50, localizacao: "C-01-10", quantidade_sistema: 300, consumo_medio_diario: 50 },
+            { id_sku: "SKU004", id_ean: "7891000000004", id_dun: "17891000000039", fator_conversao: 1, descricao: "Placa Mãe Industrial H61", categoria: "Eletrônicos", unidade: "UN", valor_unitario: 450.00, localizacao: "D-05-02", quantidade_sistema: 80, consumo_medio_diario: 1 },
+            { id_sku: "SKU005", id_ean: "7891000000005", id_dun: "17891000000046", fator_conversao: 1, descricao: "Fita Adesiva Transparente", categoria: "Embalagens", unidade: "RL", valor_unitario: 4.00, localizacao: "C-02-01", quantidade_sistema: 250, consumo_medio_diario: 15 },
+            { id_sku: "SKU006", id_ean: "7891000000006", id_dun: "17891000000053", fator_conversao: 1, descricao: "EPI - Luva de Raspa", categoria: "Segurança", unidade: "PR", valor_unitario: 15.00, localizacao: "E-01-04", quantidade_sistema: 120, consumo_medio_diario: 5 },
+            { id_sku: "SKU007", id_ean: "7891000000007", id_dun: "17891000000060", fator_conversao: 1, descricao: "Rolamento Esférico 6204", categoria: "Manutenção", unidade: "UN", valor_unitario: 45.00, localizacao: "A-03-02", quantidade_sistema: 60, consumo_medio_diario: 3 },
+            { id_sku: "SKU008", id_ean: "7891000000008", id_dun: "17891000000077", fator_conversao: 1, descricao: "Cabo de Cobre 2.5mm (Rolo 100m)", categoria: "Elétrica", unidade: "RL", valor_unitario: 180.00, localizacao: "D-01-01", quantidade_sistema: 150, consumo_medio_diario: 8 },
+            { id_sku: "SKU009", id_ean: "7891000000009", id_dun: "17891000000084", fator_conversao: 1, descricao: "Óleo Lubrificante AW68 20L", categoria: "Químicos", unidade: "BD", valor_unitario: 320.00, localizacao: "B-03-01", quantidade_sistema: 90, consumo_medio_diario: 2 },
+            { id_sku: "SKU010", id_ean: "7891000000010", id_dun: "17891000000091", fator_conversao: 1, descricao: "Capacete de Segurança Branco", categoria: "Segurança", unidade: "UN", valor_unitario: 25.00, localizacao: "E-02-01", quantidade_sistema: 200, consumo_medio_diario: 4 }
+        ];
+
+        // --- 2. VARIÁVEIS DE ESTADO ---
+        let contagens = [];
+        let produtoAtual = null;
+        let codeReader = null;
+
+        // Elementos DOM
+        const inputCodigo = document.getElementById('codigo-input');
+        const inputQtd = document.getElementById('qtd-fisica-input');
+        const painelInfo = document.getElementById('product-info-panel');
+        const feedbackMsg = document.getElementById('feedback-msg');
+        
+        // --- 3. NAVEGAÇÃO DE ABAS ---
+        window.switchTab = function(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            element.classList.add('active');
+            
+            if(tabId === 'dash') atualizarDashboard();
+            if(tabId === 'list') renderizarLista();
+        };
+
+        // --- 4. LEITURA DE CÓDIGO (ZXING) ---
+        document.getElementById('btn-start-scan').addEventListener('click', async () => {
+            const videoContainer = document.getElementById('video-container');
+            videoContainer.style.display = 'block';
+            
+            if (!codeReader) {
+                codeReader = new ZXing.BrowserMultiFormatReader();
+            }
+
+            try {
+                // Inicia a câmera traseira
+                const videoInputDevices = await codeReader.listVideoInputDevices();
+                const selectedDeviceId = videoInputDevices.length > 1 ? videoInputDevices[1].deviceId : videoInputDevices[0].deviceId;
+
+                codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+                    if (result) {
+                        // Quando ler com sucesso
+                        inputCodigo.value = result.text;
+                        pararCamera();
+                        buscarProduto();
+                        mostrarFeedback('Código lido com sucesso!', 'success');
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+                mostrarFeedback('Erro ao acessar câmera.', 'danger');
+            }
+        });
+
+        document.getElementById('btn-stop-scan').addEventListener('click', pararCamera);
+
+        function pararCamera() {
+            if (codeReader) {
+                codeReader.reset();
+            }
+            document.getElementById('video-container').style.display = 'none';
+        }
+
+        // --- 5. LÓGICA DE BUSCA E CONFERÊNCIA ---
+        inputCodigo.addEventListener('input', buscarProduto);
+
+        function buscarProduto() {
+            const codigoDigitado = inputCodigo.value.trim().toUpperCase();
+            if (codigoDigitado.length < 3) {
+                painelInfo.style.display = 'none';
+                produtoAtual = null;
+                return;
+            }
+
+            // Busca por EAN ou SKU
+            const produto = bancoProdutos.find(p => p.id_ean === codigoDigitado || p.id_sku.toUpperCase() === codigoDigitado);
+
+            if (produto) {
+                produtoAtual = produto;
+                document.getElementById('info-desc').innerText = produto.descricao;
+                document.getElementById('info-sku').innerText = produto.id_sku;
+                document.getElementById('info-loc').innerText = produto.localizacao;
+                document.getElementById('info-qtd-sis').innerText = produto.quantidade_sistema;
+                document.getElementById('info-unidade').innerText = produto.unidade;
+                painelInfo.style.display = 'block';
+                inputQtd.focus(); // Direciona para digitação
+            } else {
+                painelInfo.style.display = 'none';
+                produtoAtual = null;
+            }
+        }
+
+        document.getElementById('btn-salvar').addEventListener('click', () => {
+            if (!produtoAtual) {
+                mostrarFeedback('Busque ou escaneie um produto válido primeiro.', 'danger');
+                return;
+            }
+
+            const qtdFisica = parseFloat(inputQtd.value);
+            if (isNaN(qtdFisica) || qtdFisica < 0) {
+                mostrarFeedback('Insira uma quantidade física válida.', 'danger');
+                return;
+            }
+
+            const qtdSistema = produtoAtual.quantidade_sistema;
+            const divergencia = qtdFisica - qtdSistema;
+
+            const registro = {
+                codigo: produtoAtual.id_ean,
+                sku: produtoAtual.id_sku,
+                descricao: produtoAtual.descricao,
+                valor_unitario: produtoAtual.valor_unitario,
+                qtd_sistema: qtdSistema,
+                qtd_fisica: qtdFisica,
+                divergencia: divergencia,
+                data_hora: new Date().toLocaleString('pt-BR')
+            };
+
+            contagens.push(registro);
+            
+            // Limpar formulário
+            inputCodigo.value = '';
+            inputQtd.value = '';
+            painelInfo.style.display = 'none';
+            produtoAtual = null;
+
+            mostrarFeedback('Contagem salva com sucesso!', 'success');
+        });
+
+        function mostrarFeedback(msg, tipo) {
+            feedbackMsg.innerText = msg;
+            feedbackMsg.style.backgroundColor = tipo === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
+            feedbackMsg.style.color = tipo === 'success' ? var(--success) : var(--danger);
+            feedbackMsg.style.border = `1px solid ${tipo === 'success' ? '#4caf50' : '#f44336'}`;
+            feedbackMsg.style.display = 'block';
+            
+            setTimeout(() => { feedbackMsg.style.display = 'none'; }, 3000);
+        }
+
+        // --- 6. RENDERIZAR LISTA ---
+        function renderizarLista() {
+            const listContainer = document.getElementById('contagens-list');
+            if (contagens.length === 0) {
+                listContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Nenhuma contagem realizada ainda.</p>';
+                return;
+            }
+
+            // Inverte para mostrar as mais recentes no topo
+            const html = contagens.slice().reverse().map(c => {
+                let corDivergencia = 'divergence-zero';
+                let sinal = '';
+                if (c.divergencia > 0) { corDivergencia = 'text-success'; sinal = '+'; }
+                else if (c.divergencia < 0) { corDivergencia = 'text-danger'; }
+
+                return `
+                <div class="list-item">
+                    <div class="list-item-header">
+                        <strong>${c.sku}</strong>
+                        <span style="font-size: 12px; color: var(--text-muted);">${c.data_hora}</span>
+                    </div>
+                    <div style="margin-bottom: 5px;">${c.descricao}</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Sis: ${c.qtd_sistema} | Fís: ${c.qtd_fisica}</span>
+                        <span class="${corDivergencia}">Div: ${sinal}${c.divergencia}</span>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            listContainer.innerHTML = html;
+        }
+
+        // --- 7. DASHBOARD E KPIs ---
+        function atualizarDashboard() {
+            const totalConferidos = contagens.length;
+            const itensDivergentes = contagens.filter(c => c.divergencia !== 0).length;
+            
+            let acuracidade = 100;
+            if (totalConferidos > 0) {
+                acuracidade = ((totalConferidos - itensDivergentes) / totalConferidos) * 100;
+            }
+
+            // Calcula o valor em risco absoluto (o módulo da divergência * valor unitário)
+            const valorEmRisco = contagens.reduce((acc, c) => {
+                return acc + (Math.abs(c.divergencia) * c.valor_unitario);
+            }, 0);
+
+            document.getElementById('kpi-total').innerText = totalConferidos;
+            document.getElementById('kpi-divergentes').innerText = itensDivergentes;
+            
+            const kpiAcuracidade = document.getElementById('kpi-acuracidade');
+            kpiAcuracidade.innerText = acuracidade.toFixed(1) + '%';
+            kpiAcuracidade.className = `kpi-value ${acuracidade >= 95 ? 'text-success' : (acuracidade >= 80 ? 'text-warning' : 'text-danger')}`;
+
+            document.getElementById('kpi-risco').innerText = 'R$ ' + valorEmRisco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // --- 8. EXPORTAÇÃO CSV ---
+        document.getElementById('btn-export').addEventListener('click', () => {
+            if (contagens.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+
+            // Cabeçalho CSV
+            let csvContent = "Codigo_EAN,SKU,Descricao,Quantidade_Sistema,Quantidade_Fisica,Divergencia,Valor_Unitario,Data_Hora\n";
+
+            // Linhas
+            contagens.forEach(c => {
+                // Trata strings para não quebrar o CSV se tiver vírgulas na descrição
+                const desc = `"${c.descricao.replace(/"/g, '""')}"`;
+                const linha = `${c.codigo},${c.sku},${desc},${c.qtd_sistema},${c.qtd_fisica},${c.divergencia},${c.valor_unitario},${c.data_hora}`;
+                csvContent += linha + "\n";
+            });
+
+            // Cria o blob e faz o download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `inventario_${new Date().getTime()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+    </script>
+</body>
+</html>
