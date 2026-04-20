@@ -24,18 +24,16 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            padding-bottom: 70px; /* Espaço para a navbar inferior */
+            padding-bottom: 70px;
         }
 
         h2, h3 { margin-top: 0; }
 
         .container { padding: 15px; }
 
-        /* Abas */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Navegação Inferior */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -63,7 +61,6 @@
             font-weight: bold;
         }
 
-        /* Botões */
         .btn {
             width: 100%;
             padding: 15px;
@@ -86,7 +83,6 @@
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-secondary { background-color: #555; color: white; }
 
-        /* Formulários */
         .form-group { margin-bottom: 15px; }
         .form-group label {
             display: block;
@@ -108,9 +104,7 @@
             outline: none;
             border-color: var(--primary);
         }
-        .form-group input[readonly] { color: var(--text-muted); }
 
-        /* Scanner de Vídeo */
         #video-container {
             display: none;
             width: 100%;
@@ -121,7 +115,6 @@
         }
         video { width: 100%; height: auto; display: block; }
 
-        /* Cards de Informação */
         .info-card {
             background-color: var(--bg-card);
             padding: 15px;
@@ -132,7 +125,6 @@
         .info-card p { margin: 5px 0; font-size: 14px; }
         .info-card strong { color: white; }
 
-        /* Listas e Tabelas */
         .list-item {
             background-color: var(--bg-card);
             padding: 12px;
@@ -148,7 +140,6 @@
             padding-bottom: 5px;
         }
         
-        /* Dashboard */
         .kpi-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -164,7 +155,6 @@
         .kpi-value { font-size: 24px; font-weight: bold; margin: 10px 0 5px; }
         .kpi-label { font-size: 12px; color: var(--text-muted); }
 
-        /* Utilitários de Cor */
         .text-success { color: var(--success) !important; }
         .text-danger { color: var(--danger) !important; }
         .text-warning { color: #ff9800 !important; }
@@ -181,7 +171,6 @@
 </head>
 <body>
 
-    <!-- ABA 1: CONFERÊNCIA (Fluxo Principal) -->
     <div id="tab-scan" class="tab-content active container">
         <h2>Conferência de Estoque</h2>
         
@@ -214,7 +203,6 @@
         <button id="btn-salvar" class="btn btn-primary">💾 Salvar Contagem</button>
     </div>
 
-    <!-- ABA 2: LISTA DE CONTAGENS -->
     <div id="tab-list" class="tab-content container">
         <h2>Registros da Sessão</h2>
         <button id="btn-export" class="btn btn-primary" style="margin-bottom: 20px;">📊 Exportar CSV</button>
@@ -224,13 +212,12 @@
         </div>
     </div>
 
-    <!-- ABA 3: DASHBOARD -->
     <div id="tab-dash" class="tab-content container">
         <h2>KPIs de Acuracidade</h2>
         
         <div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-label">Acuracidade do Estoque</div>
+                <div class="kpi-label">Acuracidade</div>
                 <div id="kpi-acuracidade" class="kpi-value text-success">100%</div>
             </div>
             <div class="kpi-card">
@@ -238,17 +225,16 @@
                 <div id="kpi-total" class="kpi-value">0</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">Itens com Divergência</div>
+                <div class="kpi-label">Com Divergência</div>
                 <div id="kpi-divergentes" class="kpi-value text-warning">0</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">Valor Total em Risco (R$)</div>
+                <div class="kpi-label">Valor em Risco</div>
                 <div id="kpi-risco" class="kpi-value text-danger">R$ 0,00</div>
             </div>
         </div>
     </div>
 
-    <!-- NAVEGAÇÃO INFERIOR -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('scan', this)">
             <div style="font-size: 20px; margin-bottom: 4px;">🔍</div>
@@ -265,32 +251,28 @@
     </nav>
 
     <script>
-        // --- 1. BANCO DE DADOS LOCAL (10 Produtos Fictícios) ---
         const bancoProdutos = [
-            { id_sku: "SKU001", id_ean: "7891000000001", id_dun: "17891000000008", fator_conversao: 1, descricao: "Parafuso Sextavado M8", categoria: "Fixadores", unidade: "UN", valor_unitario: 0.50, localizacao: "A-01-01", quantidade_sistema: 500, consumo_medio_diario: 20 },
-            { id_sku: "SKU002", id_ean: "7891000000002", id_dun: "17891000000015", fator_conversao: 1, descricao: "Tinta Branca Acrílica 18L", categoria: "Químicos", unidade: "GL", valor_unitario: 120.00, localizacao: "B-02-05", quantidade_sistema: 50, consumo_medio_diario: 2 },
-            { id_sku: "SKU003", id_ean: "7891000000003", id_dun: "17891000000022", fator_conversao: 1, descricao: "Caixa de Papelão 50x50x50", categoria: "Embalagens", unidade: "UN", valor_unitario: 3.50, localizacao: "C-01-10", quantidade_sistema: 300, consumo_medio_diario: 50 },
-            { id_sku: "SKU004", id_ean: "7891000000004", id_dun: "17891000000039", fator_conversao: 1, descricao: "Placa Mãe Industrial H61", categoria: "Eletrônicos", unidade: "UN", valor_unitario: 450.00, localizacao: "D-05-02", quantidade_sistema: 80, consumo_medio_diario: 1 },
-            { id_sku: "SKU005", id_ean: "7891000000005", id_dun: "17891000000046", fator_conversao: 1, descricao: "Fita Adesiva Transparente", categoria: "Embalagens", unidade: "RL", valor_unitario: 4.00, localizacao: "C-02-01", quantidade_sistema: 250, consumo_medio_diario: 15 },
-            { id_sku: "SKU006", id_ean: "7891000000006", id_dun: "17891000000053", fator_conversao: 1, descricao: "EPI - Luva de Raspa", categoria: "Segurança", unidade: "PR", valor_unitario: 15.00, localizacao: "E-01-04", quantidade_sistema: 120, consumo_medio_diario: 5 },
-            { id_sku: "SKU007", id_ean: "7891000000007", id_dun: "17891000000060", fator_conversao: 1, descricao: "Rolamento Esférico 6204", categoria: "Manutenção", unidade: "UN", valor_unitario: 45.00, localizacao: "A-03-02", quantidade_sistema: 60, consumo_medio_diario: 3 },
-            { id_sku: "SKU008", id_ean: "7891000000008", id_dun: "17891000000077", fator_conversao: 1, descricao: "Cabo de Cobre 2.5mm (Rolo 100m)", categoria: "Elétrica", unidade: "RL", valor_unitario: 180.00, localizacao: "D-01-01", quantidade_sistema: 150, consumo_medio_diario: 8 },
-            { id_sku: "SKU009", id_ean: "7891000000009", id_dun: "17891000000084", fator_conversao: 1, descricao: "Óleo Lubrificante AW68 20L", categoria: "Químicos", unidade: "BD", valor_unitario: 320.00, localizacao: "B-03-01", quantidade_sistema: 90, consumo_medio_diario: 2 },
-            { id_sku: "SKU010", id_ean: "7891000000010", id_dun: "17891000000091", fator_conversao: 1, descricao: "Capacete de Segurança Branco", categoria: "Segurança", unidade: "UN", valor_unitario: 25.00, localizacao: "E-02-01", quantidade_sistema: 200, consumo_medio_diario: 4 }
+            { id_sku: "SKU001", id_ean: "7891000000001", descricao: "Parafuso Sextavado M8", unidade: "UN", valor_unitario: 0.50, localizacao: "A-01-01", quantidade_sistema: 500 },
+            { id_sku: "SKU002", id_ean: "7891000000002", descricao: "Tinta Branca Acrílica 18L", unidade: "GL", valor_unitario: 120.00, localizacao: "B-02-05", quantidade_sistema: 50 },
+            { id_sku: "SKU003", id_ean: "7891000000003", descricao: "Caixa de Papelão 50x50x50", unidade: "UN", valor_unitario: 3.50, localizacao: "C-01-10", quantidade_sistema: 300 },
+            { id_sku: "SKU004", id_ean: "7891000000004", descricao: "Placa Mãe Industrial H61", unidade: "UN", valor_unitario: 450.00, localizacao: "D-05-02", quantidade_sistema: 80 },
+            { id_sku: "SKU005", id_ean: "7891000000005", descricao: "Fita Adesiva Transparente", unidade: "RL", valor_unitario: 4.00, localizacao: "C-02-01", quantidade_sistema: 250 },
+            { id_sku: "SKU006", id_ean: "7891000000006", descricao: "EPI - Luva de Raspa", unidade: "PR", valor_unitario: 15.00, localizacao: "E-01-04", quantidade_sistema: 120 },
+            { id_sku: "SKU007", id_ean: "7891000000007", descricao: "Rolamento Esférico 6204", unidade: "UN", valor_unitario: 45.00, localizacao: "A-03-02", quantidade_sistema: 60 },
+            { id_sku: "SKU008", id_ean: "7891000000008", descricao: "Cabo de Cobre 2.5mm", unidade: "RL", valor_unitario: 180.00, localizacao: "D-01-01", quantidade_sistema: 150 },
+            { id_sku: "SKU009", id_ean: "7891000000009", descricao: "Óleo Lubrificante AW68 20L", unidade: "BD", valor_unitario: 320.00, localizacao: "B-03-01", quantidade_sistema: 90 },
+            { id_sku: "SKU010", id_ean: "7891000000010", descricao: "Capacete de Segurança Branco", unidade: "UN", valor_unitario: 25.00, localizacao: "E-02-01", quantidade_sistema: 200 }
         ];
 
-        // --- 2. VARIÁVEIS DE ESTADO ---
         let contagens = [];
         let produtoAtual = null;
         let codeReader = null;
 
-        // Elementos DOM
         const inputCodigo = document.getElementById('codigo-input');
         const inputQtd = document.getElementById('qtd-fisica-input');
         const painelInfo = document.getElementById('product-info-panel');
         const feedbackMsg = document.getElementById('feedback-msg');
         
-        // --- 3. NAVEGAÇÃO DE ABAS ---
         window.switchTab = function(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
@@ -301,64 +283,58 @@
             if(tabId === 'list') renderizarLista();
         };
 
-       // --- 4. LEITURA DE CÓDIGO (ZXING) ---
+        // --- CÂMERA BLINDADA (Compatível com PC e Mobile) ---
         document.getElementById('btn-start-scan').addEventListener('click', async () => {
-            const videoContainer = document.getElementById('video-container');
-            videoContainer.style.display = 'block';
-            
-            if (!codeReader) {
-                codeReader = new ZXing.BrowserMultiFormatReader();
-            }
-
             try {
-                // 1. FORÇA O PEDIDO DE PERMISSÃO DA CÂMERA AO NAVEGADOR
-                // Isso faz o alerta "Permitir o uso da câmera?" aparecer na tela
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    // Paramos esse stream temporário pois o ZXing vai criar o dele logo abaixo
-                    stream.getTracks().forEach(track => track.stop());
-                } catch (err) {
-                    mostrarFeedback('Permissão negada. Toque no cadeado ao lado do link e libere a câmera.', 'danger');
-                    document.getElementById('video-container').style.display = 'none';
-                    return;
+                const videoContainer = document.getElementById('video-container');
+                videoContainer.style.display = 'block';
+                mostrarFeedback('Iniciando câmera...', 'success');
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Seu navegador não suporta acesso à câmera.");
                 }
 
-                // 2. COM A PERMISSÃO GARANTIDA, LISTAMOS AS CÂMERAS
+                // Permissão (Aceita qualquer câmera, não trava no PC)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(track => track.stop()); 
+
+                if (typeof ZXing === 'undefined') {
+                    throw new Error("Biblioteca do leitor não carregou. Verifique a internet.");
+                }
+
+                if (!codeReader) {
+                    codeReader = new ZXing.BrowserMultiFormatReader();
+                }
+
                 const videoInputDevices = await codeReader.listVideoInputDevices();
-                
                 if (videoInputDevices.length === 0) {
-                    mostrarFeedback('Nenhuma câmera detectada.', 'danger');
-                    return;
+                    throw new Error("Nenhuma câmera detectada pelo dispositivo.");
                 }
 
-                // 3. SELECIONA A CÂMERA TRASEIRA
                 let selectedDeviceId = videoInputDevices[0].deviceId; 
+                const cameraTraseira = videoInputDevices.find(device => 
+                    device.label.toLowerCase().includes('back') || 
+                    device.label.toLowerCase().includes('environment') ||
+                    device.label.toLowerCase().includes('traseira')
+                );
                 
-                if (videoInputDevices.length > 1) {
-                    const cameraTraseira = videoInputDevices.find(device => 
-                        device.label.toLowerCase().includes('back') || 
-                        device.label.toLowerCase().includes('environment') ||
-                        device.label.toLowerCase().includes('traseira') ||
-                        device.label.toLowerCase().includes('facing back')
-                    );
-                    selectedDeviceId = cameraTraseira ? cameraTraseira.deviceId : videoInputDevices[videoInputDevices.length - 1].deviceId;
+                if (cameraTraseira) {
+                    selectedDeviceId = cameraTraseira.deviceId;
                 }
 
-                // 4. INICIA O LEITOR
                 codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                     if (result) {
                         inputCodigo.value = result.text;
                         pararCamera();
                         buscarProduto();
-                        mostrarFeedback('Código lido com sucesso!', 'success');
-                    }
-                    if (err && !(err instanceof ZXing.NotFoundException)) {
-                        console.log("Aviso ZXing:", err);
+                        mostrarFeedback('Código lido!', 'success');
                     }
                 });
+
             } catch (err) {
-                console.error(err);
-                mostrarFeedback('Erro ao acessar câmera: ' + (err.message || 'Erro desconhecido.'), 'danger');
+                alert("AVISO: " + err.message);
+                mostrarFeedback('Erro: ' + err.message, 'danger');
+                document.getElementById('video-container').style.display = 'none';
             }
         });
 
@@ -371,7 +347,6 @@
             document.getElementById('video-container').style.display = 'none';
         }
 
-        // --- 5. LÓGICA DE BUSCA E CONFERÊNCIA ---
         inputCodigo.addEventListener('input', buscarProduto);
 
         function buscarProduto() {
@@ -382,7 +357,6 @@
                 return;
             }
 
-            // Busca por EAN ou SKU
             const produto = bancoProdutos.find(p => p.id_ean === codigoDigitado || p.id_sku.toUpperCase() === codigoDigitado);
 
             if (produto) {
@@ -393,7 +367,7 @@
                 document.getElementById('info-qtd-sis').innerText = produto.quantidade_sistema;
                 document.getElementById('info-unidade').innerText = produto.unidade;
                 painelInfo.style.display = 'block';
-                inputQtd.focus(); // Direciona para digitação
+                inputQtd.focus();
             } else {
                 painelInfo.style.display = 'none';
                 produtoAtual = null;
@@ -402,76 +376,86 @@
 
         document.getElementById('btn-salvar').addEventListener('click', () => {
             if (!produtoAtual) {
-                mostrarFeedback('Busque ou escaneie um produto válido primeiro.', 'danger');
+                mostrarFeedback('Busque ou escaneie um produto válido.', 'danger');
                 return;
             }
 
             const qtdFisica = parseFloat(inputQtd.value);
             if (isNaN(qtdFisica) || qtdFisica < 0) {
-                mostrarFeedback('Insira uma quantidade física válida.', 'danger');
+                mostrarFeedback('Insira uma quantidade válida.', 'danger');
                 return;
             }
 
-            const qtdSistema = produtoAtual.quantidade_sistema;
-            const divergencia = qtdFisica - qtdSistema;
+            const divergencia = qtdFisica - produtoAtual.quantidade_sistema;
 
-            const registro = {
+            contagens.push({
                 codigo: produtoAtual.id_ean,
                 sku: produtoAtual.id_sku,
                 descricao: produtoAtual.descricao,
                 valor_unitario: produtoAtual.valor_unitario,
-                qtd_sistema: qtdSistema,
+                qtd_sistema: produtoAtual.quantidade_sistema,
                 qtd_fisica: qtdFisica,
                 divergencia: divergencia,
                 data_hora: new Date().toLocaleString('pt-BR')
-            };
-
-            contagens.push(registro);
+            });
             
-            // Limpar formulário
             inputCodigo.value = '';
             inputQtd.value = '';
             painelInfo.style.display = 'none';
             produtoAtual = null;
 
-            mostrarFeedback('Contagem salva com sucesso!', 'success');
+            mostrarFeedback('Salvo com sucesso!', 'success');
         });
 
+        // --- CORREÇÃO DO ERRO SYNTAX APLICADA AQUI ---
         function mostrarFeedback(msg, tipo) {
             feedbackMsg.innerText = msg;
             feedbackMsg.style.backgroundColor = tipo === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
-            feedbackMsg.style.color = tipo === 'success' ? var(--success) : var(--danger);
-            feedbackMsg.style.border = `1px solid ${tipo === 'success' ? '#4caf50' : '#f44336'}`;
-            feedbackMsg.style.display = 'block';
-            
-            setTimeout(() => { feedbackMsg.style.display = 'none'; }, 3000);
-        }
-
-        // --- 6. RENDERIZAR LISTA ---
-       function mostrarFeedback(msg, tipo) {
-            feedbackMsg.innerText = msg;
-            feedbackMsg.style.backgroundColor = tipo === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
-            // CORREÇÃO: Usando as cores diretamente com aspas, em vez de var() solto
             feedbackMsg.style.color = tipo === 'success' ? '#4caf50' : '#f44336';
             feedbackMsg.style.border = `1px solid ${tipo === 'success' ? '#4caf50' : '#f44336'}`;
             feedbackMsg.style.display = 'block';
-            
             setTimeout(() => { feedbackMsg.style.display = 'none'; }, 3000);
         }
-        // --- 7. DASHBOARD E KPIs ---
+
+        function renderizarLista() {
+            const listContainer = document.getElementById('contagens-list');
+            if (contagens.length === 0) {
+                listContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Nenhuma contagem.</p>';
+                return;
+            }
+
+            const html = contagens.slice().reverse().map(c => {
+                let corDivergencia = 'divergence-zero';
+                let sinal = '';
+                if (c.divergencia > 0) { corDivergencia = 'text-success'; sinal = '+'; }
+                else if (c.divergencia < 0) { corDivergencia = 'text-danger'; }
+
+                return `
+                <div class="list-item">
+                    <div class="list-item-header">
+                        <strong>${c.sku}</strong>
+                        <span style="font-size: 12px; color: var(--text-muted);">${c.data_hora}</span>
+                    </div>
+                    <div style="margin-bottom: 5px;">${c.descricao}</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Sis: ${c.qtd_sistema} | Fís: ${c.qtd_fisica}</span>
+                        <span class="${corDivergencia}">Div: ${sinal}${c.divergencia}</span>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            listContainer.innerHTML = html;
+        }
+
         function atualizarDashboard() {
             const totalConferidos = contagens.length;
             const itensDivergentes = contagens.filter(c => c.divergencia !== 0).length;
-            
             let acuracidade = 100;
             if (totalConferidos > 0) {
                 acuracidade = ((totalConferidos - itensDivergentes) / totalConferidos) * 100;
             }
 
-            // Calcula o valor em risco absoluto (o módulo da divergência * valor unitário)
-            const valorEmRisco = contagens.reduce((acc, c) => {
-                return acc + (Math.abs(c.divergencia) * c.valor_unitario);
-            }, 0);
+            const valorEmRisco = contagens.reduce((acc, c) => acc + (Math.abs(c.divergencia) * c.valor_unitario), 0);
 
             document.getElementById('kpi-total').innerText = totalConferidos;
             document.getElementById('kpi-divergentes').innerText = itensDivergentes;
@@ -479,40 +463,22 @@
             const kpiAcuracidade = document.getElementById('kpi-acuracidade');
             kpiAcuracidade.innerText = acuracidade.toFixed(1) + '%';
             kpiAcuracidade.className = `kpi-value ${acuracidade >= 95 ? 'text-success' : (acuracidade >= 80 ? 'text-warning' : 'text-danger')}`;
-
-            document.getElementById('kpi-risco').innerText = 'R$ ' + valorEmRisco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpi-risco').innerText = 'R$ ' + valorEmRisco.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         }
 
-        // --- 8. EXPORTAÇÃO CSV ---
         document.getElementById('btn-export').addEventListener('click', () => {
-            if (contagens.length === 0) {
-                alert("Não há dados para exportar.");
-                return;
-            }
-
-            // Cabeçalho CSV
+            if (contagens.length === 0) { alert("Sem dados."); return; }
             let csvContent = "Codigo_EAN,SKU,Descricao,Quantidade_Sistema,Quantidade_Fisica,Divergencia,Valor_Unitario,Data_Hora\n";
-
-            // Linhas
             contagens.forEach(c => {
-                // Trata strings para não quebrar o CSV se tiver vírgulas na descrição
                 const desc = `"${c.descricao.replace(/"/g, '""')}"`;
-                const linha = `${c.codigo},${c.sku},${desc},${c.qtd_sistema},${c.qtd_fisica},${c.divergencia},${c.valor_unitario},${c.data_hora}`;
-                csvContent += linha + "\n";
+                csvContent += `${c.codigo},${c.sku},${desc},${c.qtd_sistema},${c.qtd_fisica},${c.divergencia},${c.valor_unitario},${c.data_hora}\n`;
             });
-
-            // Cria o blob e faz o download
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `inventario_${new Date().getTime()}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `inventario_${new Date().getTime()}.csv`;
             link.click();
-            document.body.removeChild(link);
         });
-
     </script>
 </body>
 </html>
