@@ -301,7 +301,7 @@
             if(tabId === 'list') renderizarLista();
         };
 
-        // --- 4. LEITURA DE CÓDIGO (ZXING) ---
+       // --- 4. LEITURA DE CÓDIGO (ZXING) ---
         document.getElementById('btn-start-scan').addEventListener('click', async () => {
             const videoContainer = document.getElementById('video-container');
             videoContainer.style.display = 'block';
@@ -311,10 +311,30 @@
             }
 
             try {
-                // Inicia a câmera traseira
+                // Pede permissão e lista as câmeras
                 const videoInputDevices = await codeReader.listVideoInputDevices();
-                const selectedDeviceId = videoInputDevices.length > 1 ? videoInputDevices[1].deviceId : videoInputDevices[0].deviceId;
+                
+                if (videoInputDevices.length === 0) {
+                    mostrarFeedback('Nenhuma câmera detectada pelo navegador.', 'danger');
+                    return;
+                }
 
+                // Lógica inteligente para tentar pegar a câmera traseira
+                let selectedDeviceId = videoInputDevices[0].deviceId; // Padrão: pega a primeira
+                
+                if (videoInputDevices.length > 1) {
+                    // Procura alguma câmera que tenha "back", "environment" ou "traseira" no nome
+                    const cameraTraseira = videoInputDevices.find(device => 
+                        device.label.toLowerCase().includes('back') || 
+                        device.label.toLowerCase().includes('environment') ||
+                        device.label.toLowerCase().includes('traseira')
+                    );
+                    
+                    // Se achou pelo nome, usa ela. Se não, pega a última da lista (geralmente é a traseira no Android)
+                    selectedDeviceId = cameraTraseira ? cameraTraseira.deviceId : videoInputDevices[videoInputDevices.length - 1].deviceId;
+                }
+
+                // Inicia o leitor
                 codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                     if (result) {
                         // Quando ler com sucesso
@@ -323,10 +343,15 @@
                         buscarProduto();
                         mostrarFeedback('Código lido com sucesso!', 'success');
                     }
+                    // O ZXing joga erros contínuos quando não acha um código no frame, ignoramos isso
+                    if (err && !(err instanceof ZXing.NotFoundException)) {
+                        console.log("Aviso ZXing:", err);
+                    }
                 });
             } catch (err) {
                 console.error(err);
-                mostrarFeedback('Erro ao acessar câmera.', 'danger');
+                // Agora o erro real vai aparecer na tela vermelha para sabermos o que é
+                mostrarFeedback('Erro ao acessar câmera: ' + (err.message || 'Permissão negada.'), 'danger');
             }
         });
 
