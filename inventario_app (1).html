@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Inventário</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --primary:   #1B4F72;
+    --secondary: #2E86C1;
+    --success:   #1E8449;
+    --warning:   #E67E22;
+    --danger:    #C0392B;
+    --light:     #EAF4FB;
+    --border:    #D5D8DC;
+    --radius:    12px;
+    --shadow:    0 2px 12px rgba(0,0,0,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f8;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 0 40px;
+  }
+  header {
+    width: 100%; background: var(--primary); color: #fff;
+    padding: 16px 20px; text-align: center;
+    font-size: 1.2rem; font-weight: 700; letter-spacing: .5px;
+    box-shadow: var(--shadow);
+  }
+  .screen {
+    display: none; width: 100%; max-width: 520px;
+    padding: 24px 20px; flex-direction: column; gap: 16px;
+  }
+  .screen.active { display: flex; }
+
+  /* Cards */
+  .card {
+    background: #fff; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px;
+  }
+  .card h2 { font-size: 1rem; color: var(--primary); margin-bottom: 12px; }
+
+  /* Inputs */
+  input[type=text], input[type=number] {
+    width: 100%; padding: 12px 14px; border-radius: 8px;
+    border: 1.5px solid var(--border); font-size: 1rem;
+    outline: none; transition: border .2s;
+  }
+  input:focus { border-color: var(--secondary); }
+  label { font-size: .85rem; color: #555; margin-bottom: 4px; display: block; }
+
+  /* Buttons */
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .3px;
+  }
+  .btn:active { opacity: .85; transform: scale(.98); }
+  .btn-primary  { background: var(--primary);   color: #fff; }
+  .btn-success  { background: var(--success);   color: #fff; }
+  .btn-warning  { background: var(--warning);   color: #fff; }
+  .btn-danger   { background: var(--danger);    color: #fff; }
+  .btn-secondary{ background: var(--secondary); color: #fff; }
+  .btn-outline  { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-sm { padding: 8px 14px; font-size: .85rem; width: auto; }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  /* Scanner */
+  #reader { border-radius: 8px; overflow: hidden; }
+  .scan-status {
+    text-align: center; font-size: .85rem; padding: 8px;
+    border-radius: 6px; margin-top: 4px;
+  }
+  .scan-status.ok  { background: #d5f5e3; color: var(--success); }
+  .scan-status.err { background: #fadbd8; color: var(--danger); }
+  .scan-status.info{ background: var(--light); color: var(--primary); }
+
+  /* Produto card */
+  .prod-card {
+    background: var(--light); border-radius: 8px;
+    padding: 14px; border-left: 4px solid var(--secondary);
+  }
+  .prod-card .field { margin-bottom: 6px; font-size: .93rem; }
+  .prod-card .field span { font-weight: 700; color: var(--primary); }
+  .prod-card .loc-badge {
+    display: inline-block; background: var(--primary); color: #fff;
+    border-radius: 20px; padding: 2px 12px; font-size: .8rem; margin-top: 4px;
+  }
+
+  /* Lista de itens */
+  .item-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+  .item-row {
+    background: #fff; border-radius: 8px; padding: 10px 12px;
+    border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  }
+  .item-row .info { flex: 1; min-width: 0; }
+  .item-row .info .sku  { font-size: .75rem; color: #888; }
+  .item-row .info .desc { font-size: .88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-row .qty {
+    background: var(--light); border-radius: 6px;
+    padding: 4px 10px; font-weight: 700; color: var(--primary); font-size: .95rem;
+    white-space: nowrap; min-width: 42px; text-align: center;
+  }
+  .item-row .del-btn {
+    background: none; border: none; cursor: pointer;
+    color: #bbb; font-size: 1.1rem; padding: 2px 4px;
+    line-height: 1;
+  }
+  .item-row .del-btn:hover { color: var(--danger); }
+
+  /* Badge de recontagem */
+  .badge-recont {
+    font-size: .72rem; background: var(--warning); color: #fff;
+    border-radius: 20px; padding: 1px 8px; margin-left: 4px;
+  }
+
+  /* Contador */
+  .counter-pill {
+    text-align: center; font-size: .82rem; color: #666;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 14px; align-self: center;
+  }
+
+  /* Finalização */
+  .summary-box {
+    background: var(--light); border-radius: 8px; padding: 16px;
+    font-size: .93rem; line-height: 1.7;
+  }
+  .summary-box b { color: var(--primary); }
+
+  /* Tela de sucesso */
+  .success-icon { font-size: 3.5rem; text-align: center; }
+  .success-title { font-size: 1.3rem; font-weight: 800; color: var(--success); text-align: center; }
+  .success-info  { text-align: center; font-size: .95rem; color: #444; line-height: 1.8; }
+
+  /* Spinner */
+  .spinner {
+    border: 3px solid var(--border); border-top-color: var(--secondary);
+    border-radius: 50%; width: 28px; height: 28px;
+    animation: spin .7s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Config sheet URL */
+  .cfg-note { font-size: .78rem; color: #888; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>📦 Inventário de Estoque</header>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 0 — CONFIGURAÇÃO (URL do Apps Script)
+════════════════════════════════════════════════════════ -->
+<div id="screen-config" class="screen active">
+  <div class="card">
+    <h2>⚙️ Configuração</h2>
+    <label>URL do Google Apps Script (Web App)</label>
+    <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/..." />
+    <p class="cfg-note" style="margin-top:8px;">
+      Cole aqui a URL gerada após publicar o Apps Script como Web App.<br>
+      Esta URL é salva localmente no dispositivo.
+    </p>
+  </div>
+  <button class="btn btn-primary" onclick="salvarConfig()">Salvar e Continuar →</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 1 — LOGIN
+════════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="card">
+    <h2>👤 Operador</h2>
+    <label>Seu nome</label>
+    <input type="text" id="operador" placeholder="Ex: João Silva" autocomplete="name"/>
+  </div>
+  <button class="btn btn-primary" onclick="iniciar()">▶ Iniciar Inventário</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 2 — SCANNER + CONTAGEM
+════════════════════════════════════════════════════════ -->
+<div id="screen-scan" class="screen">
+  <div class="card">
+    <h2 id="scan-title">📷 Leitura de Produtos</h2>
+    <div id="reader" style="width:100%;"></div>
+    <div id="scan-status" class="scan-status info">Aponte a câmera para um QR Code ou código de barras</div>
+
+    <!-- Input manual -->
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <input type="text" id="manual-input" placeholder="Digitar código manualmente" style="flex:1;"/>
+      <button class="btn btn-secondary btn-sm" onclick="processarCodigo(document.getElementById('manual-input').value.trim())">OK</button>
+    </div>
+  </div>
+
+  <!-- Produto encontrado -->
+  <div id="prod-found" class="prod-card" style="display:none;">
+    <div class="field">📦 <span id="pf-sku"></span></div>
+    <div class="field">📝 <span id="pf-desc"></span></div>
+    <div class="field"><span class="loc-badge" id="pf-loc"></span></div>
+    <div style="margin-top:12px;">
+      <label>Quantidade contada</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="ajustarQtd(-1)">−</button>
+        <input type="number" id="qtd-input" min="0" value="0"
+               style="width:80px;text-align:center;font-size:1.2rem;font-weight:700;"/>
+        <button class="btn btn-outline btn-sm" onclick="ajustarQtd(1)">+</button>
+        <button class="btn btn-success btn-sm" onclick="confirmarItem()" style="flex:1;">✔ Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <span class="counter-pill" id="counter-pill">0 itens registrados</span>
+
+  <!-- Lista resumida -->
+  <div class="card" style="padding:14px;">
+    <h2 style="margin-bottom:8px;">📋 Itens registrados</h2>
+    <div class="item-list" id="item-list"></div>
+  </div>
+
+  <button class="btn btn-warning" onclick="confirmarFinalizar()">🏁 Finalizar Inventário</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 3 — RECONTAGEM (divergências)
+════════════════════════════════════════════════════════ -->
+<div id="screen-recount" class="screen">
+  <div class="card" style="border-left:4px solid var(--warning);">
+    <h2 style="color:var(--warning);">⚠️ Recontagem Necessária</h2>
+    <p style="font-size:.88rem;color:#555;margin-top:4px;">
+      Os produtos abaixo tiveram divergência. Reconte e confirme as quantidades.
+    </p>
+  </div>
+
+  <div id="recount-list" class="item-list" style="max-height:none;"></div>
+
+  <button class="btn btn-warning" onclick="finalizarRecontagem()">✔ Confirmar Recontagem</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 4 — ENVIANDO
+════════════════════════════════════════════════════════ -->
+<div id="screen-sending" class="screen" style="align-items:center;gap:20px;padding-top:60px;">
+  <div class="spinner"></div>
+  <p style="color:#555;font-size:.95rem;" id="sending-msg">Gravando inventário na planilha...</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 5 — SUCESSO
+════════════════════════════════════════════════════════ -->
+<div id="screen-done" class="screen" style="align-items:center;gap:16px;padding-top:40px;">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Inventário Concluído!</div>
+  <div class="summary-box" style="width:100%;">
+    <div id="done-info" class="success-info"></div>
+  </div>
+  <button class="btn btn-primary" onclick="novoInventario()">＋ Novo Inventário</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════════
+let GAS_URL      = '';
+let operador     = '';
+let invId        = '';
+let dataInicio   = null;
+let horaInicio   = '';
+let horaFim      = '';
+let itens        = [];           // [{sku, desc, loc, qtd1, qtd2}]
+let scannerObj   = null;
+let scannerAtivo = false;
+let produtoAtual = null;
+let modoRecontagem = false;
+let divergentes  = [];
+let recontagemMap = {};          // sku -> input element ref
+let produtos     = [];           // cache da aba Produtos
+
+// ═══════════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════
+function mostrarTela(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('pt-BR');
+}
+function fmtTime(d) {
+  return d.toTimeString().slice(0,5);
+}
+function gerarInvId() {
+  const n = String(Math.floor(Math.random()*9000)+1000);
+  return 'INV-' + n;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+window.onload = function() {
+  const saved = localStorage.getItem('gas_url');
+  if (saved) {
+    GAS_URL = saved;
+    document.getElementById('cfg-url').value = saved;
+    mostrarTela('screen-login');
+  }
+};
+
+function salvarConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    alert('URL inválida. Deve começar com https://script.google.com');
+    return;
+  }
+  GAS_URL = url;
+  localStorage.setItem('gas_url', url);
+  mostrarTela('screen-login');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA 1 — INICIAR
+// ═══════════════════════════════════════════════════════════
+async function iniciar() {
+  const nome = document.getElementById('operador').value.trim();
+  if (!nome) { alert('Digite seu nome para continuar.'); return; }
+
+  operador   = nome;
+  invId      = gerarInvId();
+  dataInicio = new Date();
+  horaInicio = fmtTime(dataInicio);
+  itens      = [];
+
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Carregando produtos...';
+
+  try {
+    const resp = await fetch(GAS_URL + '?action=getProdutos');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    produtos = data.produtos;
+  } catch(e) {
+    alert('Erro ao carregar produtos: ' + e.message);
+    mostrarTela('screen-login');
+    return;
+  }
+
+  modoRecontagem = false;
+  mostrarTela('screen-scan');
+  document.getElementById('scan-title').textContent = '📷 Contagem — ' + operador;
+  renderLista();
+  iniciarScanner();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCANNER
+// ═══════════════════════════════════════════════════════════
+function iniciarScanner() {
+  if (scannerAtivo) return;
+  scannerObj = new Html5Qrcode("reader");
+  const config = { fps: 10, qrbox: { width: 260, height: 160 }, supportedScanTypes: [0,1] };
+  scannerObj.start({ facingMode: "environment" }, config, onScanSucesso, () => {})
+    .then(() => { scannerAtivo = true; })
+    .catch(e => {
+      document.getElementById('scan-status').textContent = '⚠ Câmera não disponível: ' + e;
+      document.getElementById('scan-status').className = 'scan-status err';
+    });
+}
+
+function pararScanner() {
+  if (scannerAtivo && scannerObj) {
+    scannerObj.stop().then(() => { scannerAtivo = false; });
+  }
+}
+
+function onScanSucesso(codigo) {
+  pararScanner();
+  processarCodigo(codigo);
+}
+
+function processarCodigo(codigo) {
+  if (!codigo) return;
+  document.getElementById('manual-input').value = '';
+  const prod = buscarProduto(codigo);
+  if (!prod) {
+    document.getElementById('scan-status').textContent = '❌ Produto não encontrado: ' + codigo;
+    document.getElementById('scan-status').className = 'scan-status err';
+    document.getElementById('prod-found').style.display = 'none';
+    setTimeout(() => iniciarScanner(), 1500);
+    return;
+  }
+
+  produtoAtual = prod;
+  document.getElementById('pf-sku').textContent  = prod.sku;
+  document.getElementById('pf-desc').textContent = prod.desc;
+  document.getElementById('pf-loc').textContent  = '📍 ' + (prod.loc || '—');
+  document.getElementById('qtd-input').value = 0;
+  document.getElementById('prod-found').style.display = 'block';
+  document.getElementById('scan-status').textContent  = '✔ Produto encontrado!';
+  document.getElementById('scan-status').className    = 'scan-status ok';
+  document.getElementById('qtd-input').focus();
+}
+
+function buscarProduto(codigo) {
+  const c = String(codigo).trim();
+  return produtos.find(p =>
+    String(p.sku).trim()  === c ||
+    String(p.ean).trim()  === c ||
+    String(p.dun).trim()  === c
+  ) || null;
+}
+
+function ajustarQtd(delta) {
+  const inp = document.getElementById('qtd-input');
+  inp.value = Math.max(0, parseInt(inp.value || 0) + delta);
+}
+
+function confirmarItem() {
+  if (!produtoAtual) return;
+  const qtd = parseInt(document.getElementById('qtd-input').value) || 0;
+  const sku = produtoAtual.sku;
+
+  // Verificar se já existe — atualiza qtd1
+  const exist = itens.find(i => i.sku === sku);
+  if (exist) {
+    exist.qtd1 = qtd;
+  } else {
+    itens.push({ sku, desc: produtoAtual.desc, loc: produtoAtual.loc, qtd1: qtd, qtd2: null });
+  }
+
+  produtoAtual = null;
+  document.getElementById('prod-found').style.display = 'none';
+  document.getElementById('scan-status').textContent = 'Aponte a câmera para o próximo produto';
+  document.getElementById('scan-status').className = 'scan-status info';
+  renderLista();
+  setTimeout(() => iniciarScanner(), 400);
+}
+
+function renderLista() {
+  const ul = document.getElementById('item-list');
+  ul.innerHTML = '';
+  document.getElementById('counter-pill').textContent = itens.length + ' item(s) registrado(s)';
+  [...itens].reverse().forEach((it, idx) => {
+    const realIdx = itens.length - 1 - idx;
+    const div = document.createElement('div');
+    div.className = 'item-row';
+    div.innerHTML = `
+      <div class="info">
+        <div class="sku">${it.sku}</div>
+        <div class="desc">${it.desc}</div>
+      </div>
+      <div class="qty">${it.qtd1}</div>
+      <button class="del-btn" onclick="removerItem(${realIdx})" title="Remover">✕</button>`;
+    ul.appendChild(div);
+  });
+}
+
+function removerItem(idx) {
+  if (confirm('Remover ' + itens[idx].desc + '?')) {
+    itens.splice(idx, 1);
+    renderLista();
+  }
+}
+
+function confirmarFinalizar() {
+  if (itens.length === 0) { alert('Nenhum item registrado ainda.'); return; }
+  if (!confirm('Finalizar inventário com ' + itens.length + ' produto(s)?')) return;
+  finalizarContagem1();
+}
+
+// ═══════════════════════════════════════════════════════════
+// FINALIZAR CONTAGEM 1 — enviar para planilha
+// ═══════════════════════════════════════════════════════════
+async function finalizarContagem1() {
+  pararScanner();
+  horaFim = fmtTime(new Date());
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Gravando inventário na planilha...';
+
+  const payload = {
+    action:     'salvarInventario',
+    invId,
+    data:       fmtDate(dataInicio),
+    horaInicio,
+    horaFim,
+    operador,
+    itens:      itens.map(i => ({ sku: i.sku, desc: i.desc, qtd1: i.qtd1, qtd2: i.qtd2 || '' }))
+  };
+
+  try {
+    const encodedPayload = encodeURIComponent(JSON.stringify(payload));
+    const resp = await fetch(GAS_URL + '?action=salvarInventario&payload=' + encodedPayload);
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+
+    // Verificar divergentes retornados pelo script
+    divergentes = result.divergentes || [];
+    if (divergentes.length > 0) {
+      mostrarRecontagem();
+    } else {
+      mostrarSucesso();
+    }
+  } catch(e) {
+    alert('Erro ao salvar: ' + e.message);
+    mostrarTela('screen-scan');
+    iniciarScanner();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECONTAGEM
+// ═══════════════════════════════════════════════════════════
+function mostrarRecontagem() {
+  recontagemMap = {};
+  const container = document.getElementById('recount-list');
+  container.innerHTML = '';
+
+  divergentes.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '4px';
+    card.innerHTML = `
+      <div class="prod-card" style="margin-bottom:10px;">
+        <div class="field">📦 <span>${d.sku}</span>
+          <span class="badge-recont">Divergência</span>
+        </div>
+        <div class="field">📝 <span>${d.desc}</span></div>
+        <div class="field"><span class="loc-badge">📍 ${d.loc || '—'}</span></div>
+      </div>
+      <label>2ª Contagem</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="ajustarRec('${d.sku}',-1)">−</button>
+        <input type="number" id="rec-${d.sku}" min="0" value="${d.qtd1}"
+               style="width:80px;text-align:center;font-size:1.1rem;font-weight:700;"/>
+        <button class="btn btn-outline btn-sm" onclick="ajustarRec('${d.sku}',1)">+</button>
+      </div>`;
+    container.appendChild(card);
+    recontagemMap[d.sku] = d;
+  });
+
+  mostrarTela('screen-recount');
+}
+
+function ajustarRec(sku, delta) {
+  const inp = document.getElementById('rec-' + sku);
+  inp.value = Math.max(0, parseInt(inp.value || 0) + delta);
+}
+
+async function finalizarRecontagem() {
+  const qtds2 = {};
+  divergentes.forEach(d => {
+    qtds2[d.sku] = parseInt(document.getElementById('rec-' + d.sku).value) || 0;
+  });
+
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Gravando recontagem...';
+
+  const payload = {
+    action: 'salvarRecontagem',
+    invId,
+    qtds2
+  };
+
+  try {
+    const encodedPayload = encodeURIComponent(JSON.stringify(payload));
+    const resp = await fetch(GAS_URL + '?action=salvarRecontagem&payload=' + encodedPayload);
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    mostrarSucesso();
+  } catch(e) {
+    alert('Erro ao salvar recontagem: ' + e.message);
+    mostrarTela('screen-recount');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUCESSO
+// ═══════════════════════════════════════════════════════════
+function mostrarSucesso() {
+  const agora = new Date();
+  document.getElementById('done-info').innerHTML =
+    `<b>Operador:</b> ${operador}<br>
+     <b>Inventário:</b> ${invId}<br>
+     <b>Data:</b> ${fmtDate(agora)}<br>
+     <b>Hora de fim:</b> ${fmtTime(agora)}<br>
+     <b>Total de produtos:</b> ${itens.length}`;
+  mostrarTela('screen-done');
+}
+
+function novoInventario() {
+  itens = []; divergentes = []; recontagemMap = {};
+  document.getElementById('operador').value = '';
+  mostrarTela('screen-login');
+}
+</script>
+</body>
+</html>
