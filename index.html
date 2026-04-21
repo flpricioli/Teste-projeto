@@ -1,510 +1,607 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventário de Estoque</title>
-    <!-- Biblioteca ZXing para leitura de código de barras e QR Code -->
-    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
-    <style>
-        :root {
-            --bg-dark: #121212;
-            --bg-card: #1e1e1e;
-            --bg-input: #2c2c2c;
-            --text-main: #ffffff;
-            --text-muted: #aaaaaa;
-            --primary: #2196f3;
-            --success: #4caf50;
-            --danger: #f44336;
-            --border: #333333;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Inventário</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --primary:   #1B4F72;
+    --secondary: #2E86C1;
+    --success:   #1E8449;
+    --warning:   #E67E22;
+    --danger:    #C0392B;
+    --light:     #EAF4FB;
+    --border:    #D5D8DC;
+    --radius:    12px;
+    --shadow:    0 2px 12px rgba(0,0,0,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f8;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 0 40px;
+  }
+  header {
+    width: 100%; background: var(--primary); color: #fff;
+    padding: 16px 20px; text-align: center;
+    font-size: 1.2rem; font-weight: 700; letter-spacing: .5px;
+    box-shadow: var(--shadow);
+  }
+  .screen {
+    display: none; width: 100%; max-width: 520px;
+    padding: 24px 20px; flex-direction: column; gap: 16px;
+  }
+  .screen.active { display: flex; }
 
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            padding-bottom: 70px;
-        }
+  /* Cards */
+  .card {
+    background: #fff; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px;
+  }
+  .card h2 { font-size: 1rem; color: var(--primary); margin-bottom: 12px; }
 
-        h2, h3 { margin-top: 0; }
+  /* Inputs */
+  input[type=text], input[type=number] {
+    width: 100%; padding: 12px 14px; border-radius: 8px;
+    border: 1.5px solid var(--border); font-size: 1rem;
+    outline: none; transition: border .2s;
+  }
+  input:focus { border-color: var(--secondary); }
+  label { font-size: .85rem; color: #555; margin-bottom: 4px; display: block; }
 
-        .container { padding: 15px; }
+  /* Buttons */
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .3px;
+  }
+  .btn:active { opacity: .85; transform: scale(.98); }
+  .btn-primary  { background: var(--primary);   color: #fff; }
+  .btn-success  { background: var(--success);   color: #fff; }
+  .btn-warning  { background: var(--warning);   color: #fff; }
+  .btn-danger   { background: var(--danger);    color: #fff; }
+  .btn-secondary{ background: var(--secondary); color: #fff; }
+  .btn-outline  { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-sm { padding: 8px 14px; font-size: .85rem; width: auto; }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+  /* Scanner */
+  #reader { border-radius: 8px; overflow: hidden; }
+  .scan-status {
+    text-align: center; font-size: .85rem; padding: 8px;
+    border-radius: 6px; margin-top: 4px;
+  }
+  .scan-status.ok  { background: #d5f5e3; color: var(--success); }
+  .scan-status.err { background: #fadbd8; color: var(--danger); }
+  .scan-status.info{ background: var(--light); color: var(--primary); }
 
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: var(--bg-card);
-            display: flex;
-            border-top: 1px solid var(--border);
-            z-index: 1000;
-        }
+  /* Produto card */
+  .prod-card {
+    background: var(--light); border-radius: 8px;
+    padding: 14px; border-left: 4px solid var(--secondary);
+  }
+  .prod-card .field { margin-bottom: 6px; font-size: .93rem; }
+  .prod-card .field span { font-weight: 700; color: var(--primary); }
+  .prod-card .loc-badge {
+    display: inline-block; background: var(--primary); color: #fff;
+    border-radius: 20px; padding: 2px 12px; font-size: .8rem; margin-top: 4px;
+  }
 
-        .nav-item {
-            flex: 1;
-            text-align: center;
-            padding: 15px 0;
-            color: var(--text-muted);
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+  /* Lista de itens */
+  .item-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+  .item-row {
+    background: #fff; border-radius: 8px; padding: 10px 12px;
+    border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  }
+  .item-row .info { flex: 1; min-width: 0; }
+  .item-row .info .sku  { font-size: .75rem; color: #888; }
+  .item-row .info .desc { font-size: .88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-row .qty {
+    background: var(--light); border-radius: 6px;
+    padding: 4px 10px; font-weight: 700; color: var(--primary); font-size: .95rem;
+    white-space: nowrap; min-width: 42px; text-align: center;
+  }
+  .item-row .del-btn {
+    background: none; border: none; cursor: pointer;
+    color: #bbb; font-size: 1.1rem; padding: 2px 4px;
+    line-height: 1;
+  }
+  .item-row .del-btn:hover { color: var(--danger); }
 
-        .nav-item.active {
-            color: var(--success);
-            border-bottom: 3px solid var(--success);
-            font-weight: bold;
-        }
+  /* Badge de recontagem */
+  .badge-recont {
+    font-size: .72rem; background: var(--warning); color: #fff;
+    border-radius: 20px; padding: 1px 8px; margin-left: 4px;
+  }
 
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 15px;
-            box-sizing: border-box;
-        }
+  /* Contador */
+  .counter-pill {
+    text-align: center; font-size: .82rem; color: #666;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 14px; align-self: center;
+  }
 
-        .btn-scan {
-            background-color: var(--success);
-            color: white;
-            font-size: 18px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
+  /* Finalização */
+  .summary-box {
+    background: var(--light); border-radius: 8px; padding: 16px;
+    font-size: .93rem; line-height: 1.7;
+  }
+  .summary-box b { color: var(--primary); }
 
-        .btn-primary { background-color: var(--primary); color: white; }
-        .btn-secondary { background-color: #555; color: white; }
+  /* Tela de sucesso */
+  .success-icon { font-size: 3.5rem; text-align: center; }
+  .success-title { font-size: 1.3rem; font-weight: 800; color: var(--success); text-align: center; }
+  .success-info  { text-align: center; font-size: .95rem; color: #444; line-height: 1.8; }
 
-        .form-group { margin-bottom: 15px; }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--bg-input);
-            border: 1px solid var(--border);
-            color: white;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+  /* Spinner */
+  .spinner {
+    border: 3px solid var(--border); border-top-color: var(--secondary);
+    border-radius: 50%; width: 28px; height: 28px;
+    animation: spin .7s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-        #video-container {
-            display: none;
-            width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            border: 2px solid var(--success);
-        }
-        video { width: 100%; height: auto; display: block; }
-
-        .info-card {
-            background-color: var(--bg-card);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--primary);
-        }
-        .info-card p { margin: 5px 0; font-size: 14px; }
-        .info-card strong { color: white; }
-
-        .list-item {
-            background-color: var(--bg-card);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        .list-item-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 5px;
-        }
-        
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .kpi-card {
-            background-color: var(--bg-card);
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .kpi-value { font-size: 24px; font-weight: bold; margin: 10px 0 5px; }
-        .kpi-label { font-size: 12px; color: var(--text-muted); }
-
-        .text-success { color: var(--success) !important; }
-        .text-danger { color: var(--danger) !important; }
-        .text-warning { color: #ff9800 !important; }
-
-        #feedback-msg {
-            display: none;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-    </style>
+  /* Config sheet URL */
+  .cfg-note { font-size: .78rem; color: #888; line-height: 1.5; }
+</style>
 </head>
 <body>
 
-    <div id="tab-scan" class="tab-content active container">
-        <h2>Conferência de Estoque</h2>
-        
-        <button id="btn-start-scan" class="btn btn-scan">📷 Escanear Código</button>
-        
-        <div id="video-container">
-            <video id="video"></video>
-            <button id="btn-stop-scan" class="btn btn-secondary" style="border-radius: 0; margin-bottom: 0;">Cancelar Câmera</button>
-        </div>
+<header>📦 Inventário de Estoque</header>
 
-        <div id="feedback-msg"></div>
+<!-- ═══════════════════════════════════════════════════════
+     TELA 0 — CONFIGURAÇÃO (URL do Apps Script)
+════════════════════════════════════════════════════════ -->
+<div id="screen-config" class="screen active">
+  <div class="card">
+    <h2>⚙️ Configuração</h2>
+    <label>URL do Google Apps Script (Web App)</label>
+    <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/..." />
+    <p class="cfg-note" style="margin-top:8px;">
+      Cole aqui a URL gerada após publicar o Apps Script como Web App.<br>
+      Esta URL é salva localmente no dispositivo.
+    </p>
+  </div>
+  <button class="btn btn-primary" onclick="salvarConfig()">Salvar e Continuar →</button>
+</div>
 
-        <div class="form-group">
-            <label for="codigo-input">Código (EAN ou SKU)</label>
-            <input type="text" id="codigo-input" placeholder="Digite ou escaneie o código" autocomplete="off">
-        </div>
+<!-- ═══════════════════════════════════════════════════════
+     TELA 1 — LOGIN
+════════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="card">
+    <h2>👤 Operador</h2>
+    <label>Seu nome</label>
+    <input type="text" id="operador" placeholder="Ex: João Silva" autocomplete="name"/>
+  </div>
+  <button class="btn btn-primary" onclick="iniciar()">▶ Iniciar Inventário</button>
+</div>
 
-        <div id="product-info-panel" class="info-card" style="display: none;">
-            <h3 id="info-desc" style="margin-top:0; margin-bottom: 10px; color: var(--primary);">Produto</h3>
-            <p><strong>SKU:</strong> <span id="info-sku"></span></p>
-            <p><strong>Localização:</strong> <span id="info-loc"></span></p>
-            <p><strong>Qtd. Sistema:</strong> <span id="info-qtd-sis"></span> <span id="info-unidade"></span></p>
-        </div>
+<!-- ═══════════════════════════════════════════════════════
+     TELA 2 — SCANNER + CONTAGEM
+════════════════════════════════════════════════════════ -->
+<div id="screen-scan" class="screen">
+  <div class="card">
+    <h2 id="scan-title">📷 Leitura de Produtos</h2>
+    <div id="reader" style="width:100%;"></div>
+    <div id="scan-status" class="scan-status info">Aponte a câmera para um QR Code ou código de barras</div>
 
-        <div class="form-group">
-            <label for="qtd-fisica-input">Quantidade Física Contada</label>
-            <input type="number" id="qtd-fisica-input" placeholder="0" step="0.01">
-        </div>
-
-        <button id="btn-salvar" class="btn btn-primary">💾 Salvar Contagem</button>
+    <!-- Input manual -->
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <input type="text" id="manual-input" placeholder="Digitar código manualmente" style="flex:1;"/>
+      <button class="btn btn-secondary btn-sm" onclick="processarCodigo(document.getElementById('manual-input').value.trim())">OK</button>
     </div>
+  </div>
 
-    <div id="tab-list" class="tab-content container">
-        <h2>Registros da Sessão</h2>
-        <button id="btn-export" class="btn btn-primary" style="margin-bottom: 20px;">📊 Exportar CSV</button>
-        
-        <div id="contagens-list">
-            <p style="text-align: center; color: var(--text-muted);">Nenhuma contagem realizada ainda.</p>
-        </div>
+  <!-- Produto encontrado -->
+  <div id="prod-found" class="prod-card" style="display:none;">
+    <div class="field">📦 <span id="pf-sku"></span></div>
+    <div class="field">📝 <span id="pf-desc"></span></div>
+    <div class="field"><span class="loc-badge" id="pf-loc"></span></div>
+    <div style="margin-top:12px;">
+      <label>Quantidade contada</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="ajustarQtd(-1)">−</button>
+        <input type="number" id="qtd-input" min="0" value="0"
+               style="width:80px;text-align:center;font-size:1.2rem;font-weight:700;"/>
+        <button class="btn btn-outline btn-sm" onclick="ajustarQtd(1)">+</button>
+        <button class="btn btn-success btn-sm" onclick="confirmarItem()" style="flex:1;">✔ Confirmar</button>
+      </div>
     </div>
+  </div>
 
-    <div id="tab-dash" class="tab-content container">
-        <h2>KPIs de Acuracidade</h2>
-        
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Acuracidade</div>
-                <div id="kpi-acuracidade" class="kpi-value text-success">100%</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Itens Conferidos</div>
-                <div id="kpi-total" class="kpi-value">0</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Com Divergência</div>
-                <div id="kpi-divergentes" class="kpi-value text-warning">0</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Valor em Risco</div>
-                <div id="kpi-risco" class="kpi-value text-danger">R$ 0,00</div>
-            </div>
+  <span class="counter-pill" id="counter-pill">0 itens registrados</span>
+
+  <!-- Lista resumida -->
+  <div class="card" style="padding:14px;">
+    <h2 style="margin-bottom:8px;">📋 Itens registrados</h2>
+    <div class="item-list" id="item-list"></div>
+  </div>
+
+  <button class="btn btn-warning" onclick="confirmarFinalizar()">🏁 Finalizar Inventário</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 3 — RECONTAGEM (divergências)
+════════════════════════════════════════════════════════ -->
+<div id="screen-recount" class="screen">
+  <div class="card" style="border-left:4px solid var(--warning);">
+    <h2 style="color:var(--warning);">⚠️ Recontagem Necessária</h2>
+    <p style="font-size:.88rem;color:#555;margin-top:4px;">
+      Os produtos abaixo tiveram divergência. Reconte e confirme as quantidades.
+    </p>
+  </div>
+
+  <div id="recount-list" class="item-list" style="max-height:none;"></div>
+
+  <button class="btn btn-warning" onclick="finalizarRecontagem()">✔ Confirmar Recontagem</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 4 — ENVIANDO
+════════════════════════════════════════════════════════ -->
+<div id="screen-sending" class="screen" style="align-items:center;gap:20px;padding-top:60px;">
+  <div class="spinner"></div>
+  <p style="color:#555;font-size:.95rem;" id="sending-msg">Gravando inventário na planilha...</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA 5 — SUCESSO
+════════════════════════════════════════════════════════ -->
+<div id="screen-done" class="screen" style="align-items:center;gap:16px;padding-top:40px;">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Inventário Concluído!</div>
+  <div class="summary-box" style="width:100%;">
+    <div id="done-info" class="success-info"></div>
+  </div>
+  <button class="btn btn-primary" onclick="novoInventario()">＋ Novo Inventário</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════════
+let GAS_URL      = '';
+let operador     = '';
+let invId        = '';
+let dataInicio   = null;
+let horaInicio   = '';
+let horaFim      = '';
+let itens        = [];           // [{sku, desc, loc, qtd1, qtd2}]
+let scannerObj   = null;
+let scannerAtivo = false;
+let produtoAtual = null;
+let modoRecontagem = false;
+let divergentes  = [];
+let recontagemMap = {};          // sku -> input element ref
+let produtos     = [];           // cache da aba Produtos
+
+// ═══════════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════
+function mostrarTela(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('pt-BR');
+}
+function fmtTime(d) {
+  return d.toTimeString().slice(0,5);
+}
+function gerarInvId() {
+  const n = String(Math.floor(Math.random()*9000)+1000);
+  return 'INV-' + n;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+window.onload = function() {
+  const saved = localStorage.getItem('gas_url');
+  if (saved) {
+    GAS_URL = saved;
+    document.getElementById('cfg-url').value = saved;
+    mostrarTela('screen-login');
+  }
+};
+
+function salvarConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    alert('URL inválida. Deve começar com https://script.google.com');
+    return;
+  }
+  GAS_URL = url;
+  localStorage.setItem('gas_url', url);
+  mostrarTela('screen-login');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA 1 — INICIAR
+// ═══════════════════════════════════════════════════════════
+async function iniciar() {
+  const nome = document.getElementById('operador').value.trim();
+  if (!nome) { alert('Digite seu nome para continuar.'); return; }
+
+  operador   = nome;
+  invId      = gerarInvId();
+  dataInicio = new Date();
+  horaInicio = fmtTime(dataInicio);
+  itens      = [];
+
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Carregando produtos...';
+
+  try {
+    const resp = await fetch(GAS_URL + '?action=getProdutos');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    produtos = data.produtos;
+  } catch(e) {
+    alert('Erro ao carregar produtos: ' + e.message);
+    mostrarTela('screen-login');
+    return;
+  }
+
+  modoRecontagem = false;
+  mostrarTela('screen-scan');
+  document.getElementById('scan-title').textContent = '📷 Contagem — ' + operador;
+  renderLista();
+  iniciarScanner();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCANNER
+// ═══════════════════════════════════════════════════════════
+function iniciarScanner() {
+  if (scannerAtivo) return;
+  scannerObj = new Html5Qrcode("reader");
+  const config = { fps: 10, qrbox: { width: 260, height: 160 }, supportedScanTypes: [0,1] };
+  scannerObj.start({ facingMode: "environment" }, config, onScanSucesso, () => {})
+    .then(() => { scannerAtivo = true; })
+    .catch(e => {
+      document.getElementById('scan-status').textContent = '⚠ Câmera não disponível: ' + e;
+      document.getElementById('scan-status').className = 'scan-status err';
+    });
+}
+
+function pararScanner() {
+  if (scannerAtivo && scannerObj) {
+    scannerObj.stop().then(() => { scannerAtivo = false; });
+  }
+}
+
+function onScanSucesso(codigo) {
+  pararScanner();
+  processarCodigo(codigo);
+}
+
+function processarCodigo(codigo) {
+  if (!codigo) return;
+  document.getElementById('manual-input').value = '';
+  const prod = buscarProduto(codigo);
+  if (!prod) {
+    document.getElementById('scan-status').textContent = '❌ Produto não encontrado: ' + codigo;
+    document.getElementById('scan-status').className = 'scan-status err';
+    document.getElementById('prod-found').style.display = 'none';
+    setTimeout(() => iniciarScanner(), 1500);
+    return;
+  }
+
+  produtoAtual = prod;
+  document.getElementById('pf-sku').textContent  = prod.sku;
+  document.getElementById('pf-desc').textContent = prod.desc;
+  document.getElementById('pf-loc').textContent  = '📍 ' + (prod.loc || '—');
+  document.getElementById('qtd-input').value = 0;
+  document.getElementById('prod-found').style.display = 'block';
+  document.getElementById('scan-status').textContent  = '✔ Produto encontrado!';
+  document.getElementById('scan-status').className    = 'scan-status ok';
+  document.getElementById('qtd-input').focus();
+}
+
+function buscarProduto(codigo) {
+  const c = String(codigo).trim();
+  return produtos.find(p =>
+    String(p.sku).trim()  === c ||
+    String(p.ean).trim()  === c ||
+    String(p.dun).trim()  === c
+  ) || null;
+}
+
+function ajustarQtd(delta) {
+  const inp = document.getElementById('qtd-input');
+  inp.value = Math.max(0, parseInt(inp.value || 0) + delta);
+}
+
+function confirmarItem() {
+  if (!produtoAtual) return;
+  const qtd = parseInt(document.getElementById('qtd-input').value) || 0;
+  const sku = produtoAtual.sku;
+
+  // Verificar se já existe — atualiza qtd1
+  const exist = itens.find(i => i.sku === sku);
+  if (exist) {
+    exist.qtd1 = qtd;
+  } else {
+    itens.push({ sku, desc: produtoAtual.desc, loc: produtoAtual.loc, qtd1: qtd, qtd2: null });
+  }
+
+  produtoAtual = null;
+  document.getElementById('prod-found').style.display = 'none';
+  document.getElementById('scan-status').textContent = 'Aponte a câmera para o próximo produto';
+  document.getElementById('scan-status').className = 'scan-status info';
+  renderLista();
+  setTimeout(() => iniciarScanner(), 400);
+}
+
+function renderLista() {
+  const ul = document.getElementById('item-list');
+  ul.innerHTML = '';
+  document.getElementById('counter-pill').textContent = itens.length + ' item(s) registrado(s)';
+  [...itens].reverse().forEach((it, idx) => {
+    const realIdx = itens.length - 1 - idx;
+    const div = document.createElement('div');
+    div.className = 'item-row';
+    div.innerHTML = `
+      <div class="info">
+        <div class="sku">${it.sku}</div>
+        <div class="desc">${it.desc}</div>
+      </div>
+      <div class="qty">${it.qtd1}</div>
+      <button class="del-btn" onclick="removerItem(${realIdx})" title="Remover">✕</button>`;
+    ul.appendChild(div);
+  });
+}
+
+function removerItem(idx) {
+  if (confirm('Remover ' + itens[idx].desc + '?')) {
+    itens.splice(idx, 1);
+    renderLista();
+  }
+}
+
+function confirmarFinalizar() {
+  if (itens.length === 0) { alert('Nenhum item registrado ainda.'); return; }
+  if (!confirm('Finalizar inventário com ' + itens.length + ' produto(s)?')) return;
+  finalizarContagem1();
+}
+
+// ═══════════════════════════════════════════════════════════
+// FINALIZAR CONTAGEM 1 — enviar para planilha
+// ═══════════════════════════════════════════════════════════
+async function finalizarContagem1() {
+  pararScanner();
+  horaFim = fmtTime(new Date());
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Gravando inventário na planilha...';
+
+  const payload = {
+    action:     'salvarInventario',
+    invId,
+    data:       fmtDate(dataInicio),
+    horaInicio,
+    horaFim,
+    operador,
+    itens:      itens.map(i => ({ sku: i.sku, desc: i.desc, qtd1: i.qtd1, qtd2: i.qtd2 || '' }))
+  };
+
+  try {
+    const resp = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+
+    // Verificar divergentes retornados pelo script
+    divergentes = result.divergentes || [];
+    if (divergentes.length > 0) {
+      mostrarRecontagem();
+    } else {
+      mostrarSucesso();
+    }
+  } catch(e) {
+    alert('Erro ao salvar: ' + e.message);
+    mostrarTela('screen-scan');
+    iniciarScanner();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECONTAGEM
+// ═══════════════════════════════════════════════════════════
+function mostrarRecontagem() {
+  recontagemMap = {};
+  const container = document.getElementById('recount-list');
+  container.innerHTML = '';
+
+  divergentes.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '4px';
+    card.innerHTML = `
+      <div class="prod-card" style="margin-bottom:10px;">
+        <div class="field">📦 <span>${d.sku}</span>
+          <span class="badge-recont">Divergência</span>
         </div>
-    </div>
+        <div class="field">📝 <span>${d.desc}</span></div>
+        <div class="field"><span class="loc-badge">📍 ${d.loc || '—'}</span></div>
+      </div>
+      <label>2ª Contagem</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="ajustarRec('${d.sku}',-1)">−</button>
+        <input type="number" id="rec-${d.sku}" min="0" value="${d.qtd1}"
+               style="width:80px;text-align:center;font-size:1.1rem;font-weight:700;"/>
+        <button class="btn btn-outline btn-sm" onclick="ajustarRec('${d.sku}',1)">+</button>
+      </div>`;
+    container.appendChild(card);
+    recontagemMap[d.sku] = d;
+  });
 
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('scan', this)">
-            <div style="font-size: 20px; margin-bottom: 4px;">🔍</div>
-            Escanear
-        </div>
-        <div class="nav-item" onclick="switchTab('list', this)">
-            <div style="font-size: 20px; margin-bottom: 4px;">📋</div>
-            Contagens
-        </div>
-        <div class="nav-item" onclick="switchTab('dash', this)">
-            <div style="font-size: 20px; margin-bottom: 4px;">📈</div>
-            Dashboard
-        </div>
-    </nav>
+  mostrarTela('screen-recount');
+}
 
-    <script>
-        const bancoProdutos = [
-            { id_sku: "SKU001", id_ean: "7891000000001", descricao: "Parafuso Sextavado M8", unidade: "UN", valor_unitario: 0.50, localizacao: "A-01-01", quantidade_sistema: 500 },
-            { id_sku: "SKU002", id_ean: "7891000000002", descricao: "Tinta Branca Acrílica 18L", unidade: "GL", valor_unitario: 120.00, localizacao: "B-02-05", quantidade_sistema: 50 },
-            { id_sku: "SKU003", id_ean: "7891000000003", descricao: "Caixa de Papelão 50x50x50", unidade: "UN", valor_unitario: 3.50, localizacao: "C-01-10", quantidade_sistema: 300 },
-            { id_sku: "SKU004", id_ean: "7891000000004", descricao: "Placa Mãe Industrial H61", unidade: "UN", valor_unitario: 450.00, localizacao: "D-05-02", quantidade_sistema: 80 },
-            { id_sku: "SKU005", id_ean: "7891000000005", descricao: "Fita Adesiva Transparente", unidade: "RL", valor_unitario: 4.00, localizacao: "C-02-01", quantidade_sistema: 250 },
-            { id_sku: "SKU006", id_ean: "7891000000006", descricao: "EPI - Luva de Raspa", unidade: "PR", valor_unitario: 15.00, localizacao: "E-01-04", quantidade_sistema: 120 },
-            { id_sku: "SKU007", id_ean: "7891000000007", descricao: "Rolamento Esférico 6204", unidade: "UN", valor_unitario: 45.00, localizacao: "A-03-02", quantidade_sistema: 60 },
-            { id_sku: "SKU008", id_ean: "7891000000008", descricao: "Cabo de Cobre 2.5mm", unidade: "RL", valor_unitario: 180.00, localizacao: "D-01-01", quantidade_sistema: 150 },
-            { id_sku: "SKU009", id_ean: "7891000000009", descricao: "Óleo Lubrificante AW68 20L", unidade: "BD", valor_unitario: 320.00, localizacao: "B-03-01", quantidade_sistema: 90 },
-            { id_sku: "SKU010", id_ean: "7891000000010", descricao: "Capacete de Segurança Branco", unidade: "UN", valor_unitario: 25.00, localizacao: "E-02-01", quantidade_sistema: 200 }
-        ];
+function ajustarRec(sku, delta) {
+  const inp = document.getElementById('rec-' + sku);
+  inp.value = Math.max(0, parseInt(inp.value || 0) + delta);
+}
 
-        let contagens = [];
-        let produtoAtual = null;
-        let codeReader = null;
+async function finalizarRecontagem() {
+  const qtds2 = {};
+  divergentes.forEach(d => {
+    qtds2[d.sku] = parseInt(document.getElementById('rec-' + d.sku).value) || 0;
+  });
 
-        const inputCodigo = document.getElementById('codigo-input');
-        const inputQtd = document.getElementById('qtd-fisica-input');
-        const painelInfo = document.getElementById('product-info-panel');
-        const feedbackMsg = document.getElementById('feedback-msg');
-        
-        window.switchTab = function(tabId, element) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-            element.classList.add('active');
-            
-            if(tabId === 'dash') atualizarDashboard();
-            if(tabId === 'list') renderizarLista();
-        };
+  mostrarTela('screen-sending');
+  document.getElementById('sending-msg').textContent = 'Gravando recontagem...';
 
-        // --- CÂMERA BLINDADA (Compatível com PC e Mobile) ---
-        document.getElementById('btn-start-scan').addEventListener('click', async () => {
-            try {
-                const videoContainer = document.getElementById('video-container');
-                videoContainer.style.display = 'block';
-                mostrarFeedback('Iniciando câmera...', 'success');
+  const payload = {
+    action: 'salvarRecontagem',
+    invId,
+    qtds2
+  };
 
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error("Seu navegador não suporta acesso à câmera.");
-                }
+  try {
+    const resp = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    mostrarSucesso();
+  } catch(e) {
+    alert('Erro ao salvar recontagem: ' + e.message);
+    mostrarTela('screen-recount');
+  }
+}
 
-                // Permissão (Aceita qualquer câmera, não trava no PC)
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                stream.getTracks().forEach(track => track.stop()); 
+// ═══════════════════════════════════════════════════════════
+// SUCESSO
+// ═══════════════════════════════════════════════════════════
+function mostrarSucesso() {
+  const agora = new Date();
+  document.getElementById('done-info').innerHTML =
+    `<b>Operador:</b> ${operador}<br>
+     <b>Inventário:</b> ${invId}<br>
+     <b>Data:</b> ${fmtDate(agora)}<br>
+     <b>Hora de fim:</b> ${fmtTime(agora)}<br>
+     <b>Total de produtos:</b> ${itens.length}`;
+  mostrarTela('screen-done');
+}
 
-                if (typeof ZXing === 'undefined') {
-                    throw new Error("Biblioteca do leitor não carregou. Verifique a internet.");
-                }
-
-                if (!codeReader) {
-                    codeReader = new ZXing.BrowserMultiFormatReader();
-                }
-
-                const videoInputDevices = await codeReader.listVideoInputDevices();
-                if (videoInputDevices.length === 0) {
-                    throw new Error("Nenhuma câmera detectada pelo dispositivo.");
-                }
-
-                let selectedDeviceId = videoInputDevices[0].deviceId; 
-                const cameraTraseira = videoInputDevices.find(device => 
-                    device.label.toLowerCase().includes('back') || 
-                    device.label.toLowerCase().includes('environment') ||
-                    device.label.toLowerCase().includes('traseira')
-                );
-                
-                if (cameraTraseira) {
-                    selectedDeviceId = cameraTraseira.deviceId;
-                }
-
-                codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-                    if (result) {
-                        inputCodigo.value = result.text;
-                        pararCamera();
-                        buscarProduto();
-                        mostrarFeedback('Código lido!', 'success');
-                    }
-                });
-
-            } catch (err) {
-                alert("AVISO: " + err.message);
-                mostrarFeedback('Erro: ' + err.message, 'danger');
-                document.getElementById('video-container').style.display = 'none';
-            }
-        });
-
-        document.getElementById('btn-stop-scan').addEventListener('click', pararCamera);
-
-        function pararCamera() {
-            if (codeReader) {
-                codeReader.reset();
-            }
-            document.getElementById('video-container').style.display = 'none';
-        }
-
-        inputCodigo.addEventListener('input', buscarProduto);
-
-        function buscarProduto() {
-            const codigoDigitado = inputCodigo.value.trim().toUpperCase();
-            if (codigoDigitado.length < 3) {
-                painelInfo.style.display = 'none';
-                produtoAtual = null;
-                return;
-            }
-
-            const produto = bancoProdutos.find(p => p.id_ean === codigoDigitado || p.id_sku.toUpperCase() === codigoDigitado);
-
-            if (produto) {
-                produtoAtual = produto;
-                document.getElementById('info-desc').innerText = produto.descricao;
-                document.getElementById('info-sku').innerText = produto.id_sku;
-                document.getElementById('info-loc').innerText = produto.localizacao;
-                document.getElementById('info-qtd-sis').innerText = produto.quantidade_sistema;
-                document.getElementById('info-unidade').innerText = produto.unidade;
-                painelInfo.style.display = 'block';
-                inputQtd.focus();
-            } else {
-                painelInfo.style.display = 'none';
-                produtoAtual = null;
-            }
-        }
-
-        // URL oficial do seu Google Apps Script
-        const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbySpAMdfxJNdm5O-2_oM41uIEJFcgzLTs6w_aO3oAOsn_oWHKMiZ3h9hIy_hI8DUyuo/exec";
-
-        document.getElementById('btn-salvar').addEventListener('click', async () => {
-            if (!produtoAtual) {
-                mostrarFeedback('Busque ou escaneie um produto válido.', 'danger');
-                return;
-            }
-
-            const qtdFisica = parseFloat(inputQtd.value);
-            if (isNaN(qtdFisica) || qtdFisica < 0) {
-                mostrarFeedback('Insira uma quantidade válida.', 'danger');
-                return;
-            }
-
-            const divergencia = qtdFisica - produtoAtual.quantidade_sistema;
-
-            // Cria o registro com os dados
-            const registro = {
-                codigo: produtoAtual.id_ean,
-                sku: produtoAtual.id_sku,
-                descricao: produtoAtual.descricao,
-                valor_unitario: produtoAtual.valor_unitario,
-                qtd_sistema: produtoAtual.quantidade_sistema,
-                qtd_fisica: qtdFisica,
-                divergencia: divergencia,
-                data_hora: new Date().toLocaleString('pt-BR')
-            };
-
-            // Salva na memória do app (aba "Contagens" local)
-            contagens.push(registro);
-            
-            // Avisa o usuário que o envio começou
-            mostrarFeedback('Enviando para a planilha...', 'success');
-
-            // Dispara a requisição para a sua URL do Google Apps Script
-            try {
-                await fetch(URL_GOOGLE_SHEETS, {
-                    method: 'POST',
-                    mode: 'no-cors', // Fundamental para não dar erro de CORS em chamadas cross-origin
-                    headers: {
-                        'Content-Type': 'text/plain',
-                    },
-                    body: JSON.stringify(registro)
-                });
-                
-                mostrarFeedback('Salvo no app e na Planilha!', 'success');
-            } catch (error) {
-                console.error("Erro na integração:", error);
-                mostrarFeedback('Salvo no app, mas falhou ao enviar para a web.', 'warning');
-            }
-
-            // Limpa a tela para a próxima leitura
-            inputCodigo.value = '';
-            inputQtd.value = '';
-            painelInfo.style.display = 'none';
-            produtoAtual = null;
-        });
-
-        // --- CORREÇÃO DO ERRO SYNTAX APLICADA AQUI ---
-        function mostrarFeedback(msg, tipo) {
-            feedbackMsg.innerText = msg;
-            feedbackMsg.style.backgroundColor = tipo === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
-            feedbackMsg.style.color = tipo === 'success' ? '#4caf50' : '#f44336';
-            feedbackMsg.style.border = `1px solid ${tipo === 'success' ? '#4caf50' : '#f44336'}`;
-            feedbackMsg.style.display = 'block';
-            setTimeout(() => { feedbackMsg.style.display = 'none'; }, 3000);
-        }
-
-        function renderizarLista() {
-            const listContainer = document.getElementById('contagens-list');
-            if (contagens.length === 0) {
-                listContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Nenhuma contagem.</p>';
-                return;
-            }
-
-            const html = contagens.slice().reverse().map(c => {
-                let corDivergencia = 'divergence-zero';
-                let sinal = '';
-                if (c.divergencia > 0) { corDivergencia = 'text-success'; sinal = '+'; }
-                else if (c.divergencia < 0) { corDivergencia = 'text-danger'; }
-
-                return `
-                <div class="list-item">
-                    <div class="list-item-header">
-                        <strong>${c.sku}</strong>
-                        <span style="font-size: 12px; color: var(--text-muted);">${c.data_hora}</span>
-                    </div>
-                    <div style="margin-bottom: 5px;">${c.descricao}</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                        <span>Sis: ${c.qtd_sistema} | Fís: ${c.qtd_fisica}</span>
-                        <span class="${corDivergencia}">Div: ${sinal}${c.divergencia}</span>
-                    </div>
-                </div>
-                `;
-            }).join('');
-            listContainer.innerHTML = html;
-        }
-
-        function atualizarDashboard() {
-            const totalConferidos = contagens.length;
-            const itensDivergentes = contagens.filter(c => c.divergencia !== 0).length;
-            let acuracidade = 100;
-            if (totalConferidos > 0) {
-                acuracidade = ((totalConferidos - itensDivergentes) / totalConferidos) * 100;
-            }
-
-            const valorEmRisco = contagens.reduce((acc, c) => acc + (Math.abs(c.divergencia) * c.valor_unitario), 0);
-
-            document.getElementById('kpi-total').innerText = totalConferidos;
-            document.getElementById('kpi-divergentes').innerText = itensDivergentes;
-            
-            const kpiAcuracidade = document.getElementById('kpi-acuracidade');
-            kpiAcuracidade.innerText = acuracidade.toFixed(1) + '%';
-            kpiAcuracidade.className = `kpi-value ${acuracidade >= 95 ? 'text-success' : (acuracidade >= 80 ? 'text-warning' : 'text-danger')}`;
-            document.getElementById('kpi-risco').innerText = 'R$ ' + valorEmRisco.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        }
-
-        document.getElementById('btn-export').addEventListener('click', () => {
-            if (contagens.length === 0) { alert("Sem dados."); return; }
-            let csvContent = "Codigo_EAN,SKU,Descricao,Quantidade_Sistema,Quantidade_Fisica,Divergencia,Valor_Unitario,Data_Hora\n";
-            contagens.forEach(c => {
-                const desc = `"${c.descricao.replace(/"/g, '""')}"`;
-                csvContent += `${c.codigo},${c.sku},${desc},${c.qtd_sistema},${c.qtd_fisica},${c.divergencia},${c.valor_unitario},${c.data_hora}\n`;
-            });
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `inventario_${new Date().getTime()}.csv`;
-            link.click();
-        });
-    </script>
+function novoInventario() {
+  itens = []; divergentes = []; recontagemMap = {};
+  document.getElementById('operador').value = '';
+  mostrarTela('screen-login');
+}
+</script>
 </body>
 </html>
